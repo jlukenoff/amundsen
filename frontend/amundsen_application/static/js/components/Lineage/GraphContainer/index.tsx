@@ -58,7 +58,7 @@ export const GraphContainer: React.FC<GraphContainerProps> = ({
         </div>
       </header>
       <div className="graph-container">
-        <Graph lineage={lineage} />
+        <Graph lineage={lineage} rootNode={rootNode} />
       </div>
     </div>
   );

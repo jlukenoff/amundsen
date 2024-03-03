@@ -2,16 +2,97 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from 'react';
-import * as ReactDOMServer from 'react-dom/server';
-import { Lineage } from 'interfaces';
-import { LeftArrowIcon, RightArrowIcon } from '../../SVGIcons';
-import lineageWrapper from './wrapper';
-import { LineageChart } from './chart';
+import { Lineage, LineageItem, ResourceType } from 'interfaces';
 import { CHART_DEFAULT_DIMENSIONS, LINEAGE_SCENE_MARGIN } from './constants';
+import dagre, { GraphEdge } from '@dagrejs/dagre';
+import ParentSize from '@visx/responsive/lib/components/ParentSize';
+import { Zoom } from '@visx/zoom';
 import './styles.scss';
+import { getSourceIconClass } from 'config/config-utils';
+import Edge from './edge';
+
+const NODE_WIDTH = 300;
+const NODE_HEIGHT = 50;
+
+export const DAGRE_CONFIG = {
+  rankdir: 'LR',
+  marginx: 140,
+  marginy: 40,
+  align: 'UL',
+  ranker: 'network-simplex',
+  edgesep: 60,
+  ranksep: 140,
+};
+
+export const INITIAL_TRANSFORM = {
+  scaleX: 0.8,
+  scaleY: 0.8,
+  translateX: 0,
+  translateY: 0,
+  skewX: 0,
+  skewY: 0,
+};
+
+interface LineageNode {
+  targetPosition: string;
+  sourcePosition: string;
+  position: { x: number; y: number };
+  width: number;
+  height: number;
+  data: LineageItem;
+  label: string;
+}
+
+function initializeDagreGraph() {
+  const dagreGraph = new dagre.graphlib.Graph<LineageNode>({ directed: true });
+
+  dagreGraph.setGraph(DAGRE_CONFIG);
+  dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+  return dagreGraph;
+}
+
+function initializeGraphContents(
+  lineage: Lineage,
+  graph: dagre.graphlib.Graph<LineageNode>
+) {
+  const allEntities = [
+    ...lineage.upstream_entities,
+    ...lineage.downstream_entities,
+  ];
+
+  allEntities.forEach((entity) => {
+    graph.setNode(entity.key, {
+      data: entity,
+      label: entity.key,
+      width: NODE_WIDTH,
+      height: NODE_HEIGHT,
+      targetPosition: 'left',
+      sourcePosition: 'right',
+    });
+  });
+
+  allEntities.forEach((entity) => {
+    if (entity.parent) {
+      graph.setEdge(entity.parent, entity.key);
+    }
+  });
+
+  dagre.layout(graph);
+
+  graph.nodes().forEach((nodeId) => {
+    const node = graph.node(nodeId);
+
+    node.position = {
+      x: node.x - NODE_WIDTH / 2,
+      y: node.y - NODE_HEIGHT / 2,
+    };
+  });
+}
 
 export interface GraphProps {
   lineage: Lineage;
+  rootNode: LineageItem;
 }
 
 export const getDimensions = ({ width, height }: DOMRect) => ({
@@ -23,50 +104,122 @@ export const getDimensions = ({ width, height }: DOMRect) => ({
     (LINEAGE_SCENE_MARGIN.top + LINEAGE_SCENE_MARGIN.bottom),
 });
 
-const DOWNSTREAM_ARROW_LABEL = 'Downstream';
-const UPSTREAM_ARROW_LABEL = 'Upstream';
-const FILL_ARROW_LABEL = '#acacc0';
+function getGraphEdges(graph: dagre.graphlib.Graph<LineageNode> | null) {
+  return graph?.edges().map((e) => graph.edge(e));
+}
 
-export const Graph: React.FC<GraphProps> = ({ lineage }: GraphProps) => {
-  const rootRef = React.useRef<HTMLDivElement>(null);
-  const [scene, setScene] = React.useState<LineageChart | null>(null);
+export const Graph: React.FC<GraphProps> = ({
+  lineage,
+  rootNode,
+}: GraphProps) => {
+  const graph = React.useRef(initializeDagreGraph());
+  const [lineageState, setLineageState] = React.useState<{
+    nodes: string[];
+    edges: GraphEdge[];
+  } | null>(null);
 
-  // Setting up margins & render screen for the graph.
   React.useEffect(() => {
-    if (!scene && rootRef.current) {
-      const dimensions = getDimensions(rootRef.current.getBoundingClientRect());
-
-      const currentScene = lineageWrapper.create(
-        rootRef.current,
-        lineage,
-        dimensions,
-        {
-          upstream: `${ReactDOMServer.renderToString(
-            <div className="text-title-w2">
-              <LeftArrowIcon fill={FILL_ARROW_LABEL} />
-              <span>{UPSTREAM_ARROW_LABEL}</span>
-            </div>
-          )}`,
-          downstream: `${ReactDOMServer.renderToString(
-            <div className="text-title-w2">
-              <RightArrowIcon fill={FILL_ARROW_LABEL} />
-              <span>{DOWNSTREAM_ARROW_LABEL}</span>
-            </div>
-          )}`,
-        }
-      );
-
-      setScene(() => currentScene);
+    if (!lineageState) {
+      initializeGraphContents(lineage, graph.current);
+      setLineageState({
+        nodes: graph.current.nodes(),
+        edges: getGraphEdges(graph.current) || [],
+      });
     }
 
     return () => {
-      if (scene && rootRef && rootRef.current) {
-        lineageWrapper.destroy(rootRef.current);
-      }
+      graph.current = initializeDagreGraph();
     };
-  }, [rootRef, scene]);
+  }, [lineage, graph.current, lineageState]);
 
-  return <div className="lineage-graph" ref={rootRef} />;
+  if (!lineageState || !graph.current) {
+    return <span>Please wait...</span>;
+  }
+
+  return (
+    <ParentSize>
+      {(parent) => (
+        <Zoom
+          width={parent.width}
+          height={parent.height}
+          initialTransformMatrix={INITIAL_TRANSFORM}
+        >
+          {(zoom) => (
+            <div>
+              <svg
+                style={{
+                  width: '100vw',
+                  height: '100vh',
+                  cursor: zoom.isDragging ? 'grabbing' : 'grab',
+                }}
+                ref={zoom.containerRef as React.LegacyRef<SVGSVGElement>}
+              >
+                <g transform={zoom.toString()}>
+                  <Edge edgePoints={lineageState.edges} />
+                </g>
+                <g transform={zoom.toString()}>
+                  {graph.current.nodes().map((n) => {
+                    const node = graph.current.node(n);
+                    const isRoot = n === rootNode.key;
+
+                    return (
+                      <React.Fragment key={node.data.key}>
+                        <g>
+                          <foreignObject
+                            x={node.x - NODE_WIDTH / 2}
+                            y={node.y - NODE_HEIGHT / 2}
+                            fill="white"
+                            width={NODE_WIDTH}
+                            height={NODE_HEIGHT}
+                          >
+                            <div
+                              style={{
+                                display: 'flex',
+                                height: 'calc(100% - 5px)',
+                                width: 'calc(100% - 5px)',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                border: `1px solid ${
+                                  isRoot ? 'black' : '#ccc'
+                                }`,
+                                margin: 'auto',
+                                borderRadius: '4px',
+                                boxShadow: isRoot ? '0 0 10px 0 #ccc' : 'none',
+                              }}
+                            >
+                              <span
+                                className={
+                                  'icon icon-header ' +
+                                  getSourceIconClass(
+                                    node.data.database,
+                                    ResourceType.table
+                                  )
+                                }
+                                style={{ margin: '0 0 0 0.5rem' }}
+                              />
+                              <span
+                                style={{
+                                  textOverflow: 'ellipsis',
+                                  overflow: 'hidden',
+                                  padding: '0 0.5rem',
+                                }}
+                              >
+                                {node.label}
+                              </span>
+                            </div>
+                          </foreignObject>
+                        </g>
+                      </React.Fragment>
+                    );
+                  })}
+                </g>
+              </svg>
+            </div>
+          )}
+        </Zoom>
+      )}
+    </ParentSize>
+  );
 };
 
 export default Graph;

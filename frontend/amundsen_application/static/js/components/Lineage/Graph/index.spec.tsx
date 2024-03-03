@@ -4,28 +4,28 @@
 import * as React from 'react';
 import { shallow } from 'enzyme';
 
+import { Lineage } from 'interfaces/Lineage';
 import { getDimensions, Graph } from './index';
 
 describe('Graph', () => {
   const setup = () => {
-    const lineage = {
-      downstream_entities: [],
-      upstream_entities: [
-        {
-          badges: [],
-          cluster: 'gold',
-          database: 'hive',
-          key: 'hive://gold.test_schema/test_table1',
-          level: 0,
-          name: 'test_table1',
-          parent: null,
-          schema: 'test_schema',
-          source: 'hive',
-          usage: 0,
-        },
-      ],
+    const root = {
+      badges: [],
+      cluster: 'gold',
+      database: 'hive',
+      key: 'hive://gold.test_schema/test_table1',
+      level: 0,
+      name: 'test_table1',
+      parent: null,
+      schema: 'test_schema',
+      source: 'hive',
+      usage: 0,
     };
-    const wrapper = shallow(<Graph lineage={lineage} />);
+    const lineage: Lineage = {
+      downstream_entities: [],
+      upstream_entities: [root],
+    };
+    const wrapper = shallow(<Graph lineage={lineage} rootNode={root} />);
 
     return {
       wrapper,

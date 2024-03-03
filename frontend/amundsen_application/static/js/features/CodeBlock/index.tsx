@@ -23,7 +23,6 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
       language={LANGUAGE}
       theme={atomOneLight}
       showLineNumbers={false}
-      wrapLines
       codeBlock
     />
   </div>

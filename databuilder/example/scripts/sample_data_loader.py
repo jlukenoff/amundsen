@@ -78,6 +78,7 @@ def run_csv_job(file_loc, job_name, model):
     node_files_folder = f'{tmp_folder}/nodes'
     relationship_files_folder = f'{tmp_folder}/relationships'
 
+    print("sample_data_loader.py:81")
     csv_extractor = CsvExtractor()
     csv_loader = FsNeo4jCSVLoader()
 
@@ -109,6 +110,7 @@ def run_table_badge_job(table_path, badge_path):
     tmp_folder = '/var/tmp/amundsen/table_badge'
     node_files_folder = f'{tmp_folder}/nodes'
     relationship_files_folder = f'{tmp_folder}/relationships'
+    print("sample_data_loader.py:113")
     extractor = CsvTableBadgeExtractor()
     csv_loader = FsNeo4jCSVLoader()
     task = DefaultTask(extractor=extractor,
@@ -138,6 +140,7 @@ def run_table_column_job(table_path, column_path):
     tmp_folder = '/var/tmp/amundsen/table_column'
     node_files_folder = f'{tmp_folder}/nodes'
     relationship_files_folder = f'{tmp_folder}/relationships'
+    print("sample_data_loader.py:143")
     extractor = CsvTableColumnExtractor()
     csv_loader = FsNeo4jCSVLoader()
     task = DefaultTask(extractor,
@@ -164,6 +167,7 @@ def run_table_column_job(table_path, column_path):
 
 
 def run_table_lineage_job(table_lineage_path):
+    print("sample_data_loader.py:170")
     tmp_folder = '/var/tmp/amundsen/table_column'
     node_files_folder = f'{tmp_folder}/nodes'
     relationship_files_folder = f'{tmp_folder}/relationships'
@@ -192,6 +196,7 @@ def run_table_lineage_job(table_lineage_path):
 
 
 def run_column_lineage_job(column_lineage_path):
+    print("sample_data_loader.py:199")
     tmp_folder = '/var/tmp/amundsen/table_column'
     node_files_folder = f'{tmp_folder}/nodes'
     relationship_files_folder = f'{tmp_folder}/relationships'
@@ -220,6 +225,7 @@ def run_column_lineage_job(column_lineage_path):
 
 
 def create_last_updated_job():
+    print("sample_data_loader.py:228")
     # loader saves data to these folders and publisher reads it from here
     tmp_folder = '/var/tmp/amundsen/last_updated_data'
     node_files_folder = f'{tmp_folder}/nodes'
@@ -352,12 +358,16 @@ def create_es_publisher_sample_job(elasticsearch_index_alias='table_search_index
 
 if __name__ == "__main__":
     # Uncomment next line to get INFO level logging
-    # logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO)
 
     run_table_column_job('example/sample_data/sample_table.csv', 'example/sample_data/sample_col.csv')
+    print("sample_data_loader.py:364")
     run_table_badge_job('example/sample_data/sample_table.csv', 'example/sample_data/sample_badges.csv')
+    print("sample_data_loader.py:366")
     run_table_lineage_job('example/sample_data/sample_table_lineage.csv')
+    print("sample_data_loader.py:368")
     run_column_lineage_job('example/sample_data/sample_column_lineage.csv')
+    print("sample_data_loader.py:370")
     run_csv_job('example/sample_data/sample_table_column_stats.csv', 'test_table_column_stats',
                 'databuilder.models.table_stats.TableColumnStats')
     run_csv_job('example/sample_data/sample_table_programmatic_source.csv', 'test_programmatic_source',
@@ -394,9 +404,9 @@ if __name__ == "__main__":
                 'databuilder.models.dashboard.dashboard_execution.DashboardExecution')
     run_csv_job('example/sample_data/sample_dashboard_last_modified.csv', 'test_dashboard_last_modified',
                 'databuilder.models.dashboard.dashboard_last_modified.DashboardLastModifiedTimestamp')
-
+    print("sample_data_loader.py:403")
     create_dashboard_tables_job().launch()
-
+    print("sample_data_loader.py:405")
     create_last_updated_job().launch()
 
     job_es_table = create_es_publisher_sample_job(

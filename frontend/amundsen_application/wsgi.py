@@ -5,10 +5,14 @@ import os
 from amundsen_application import create_app
 
 
-if not os.getenv('FRONTEND_SVC_CONFIG_MODULE_CLASS'):
-    os.environ['FRONTEND_SVC_CONFIG_MODULE_CLASS'] = 'amundsen_application.config.TestConfig'
+if not os.getenv("FRONTEND_SVC_CONFIG_MODULE_CLASS"):
+    os.environ[
+        "FRONTEND_SVC_CONFIG_MODULE_CLASS"
+    ] = "amundsen_application.config.TestConfig"
 
 application = create_app()
 
-if __name__ == '__main__':
-    application.run(host='0.0.0.0')
+if __name__ == "__main__":
+    PORT = os.getenv("FLASK_PORT", "5000")
+
+    application.run(debug=True, port=PORT)

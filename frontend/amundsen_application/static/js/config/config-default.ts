@@ -409,10 +409,10 @@ const configDefault: AppConfig = {
   },
   tableLineage: {
     defaultLineageDepth: 5,
-    externalEnabled: false,
+    externalEnabled: true,
     iconPath: 'PATH_TO_ICON',
-    inAppListEnabled: false,
-    inAppPageEnabled: false,
+    inAppListEnabled: true,
+    inAppPageEnabled: true,
     isBeta: false,
     urlGenerator: (
       database: string,
