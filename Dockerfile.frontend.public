@@ -6,33 +6,21 @@ COPY ./frontend/amundsen_application/static/package-lock.json /app/amundsen_appl
 RUN npm install
 
 COPY ./frontend/amundsen_application/static /app/amundsen_application/static
-RUN npm run build
+RUN npm rebuild node-sass
+RUN npm run build && rm -r node_modules
 
-FROM python:3.7-slim as base
+COPY ./frontend /app
+
+FROM python:3.7-slim
 WORKDIR /app
-RUN pip3 install gunicorn
 
-COPY --from=node-stage /app /app
 COPY ./frontend /app
 COPY requirements-dev.txt /app/requirements-dev.txt
 COPY requirements-common.txt /app/requirements-common.txt
+
+COPY --from=node-stage /app /app
+
 RUN pip3 install -e .
 
-CMD [ "python3",  "amundsen_application/wsgi.py" ]
-
-FROM base as oidc-release
-
-RUN pip3 install -e .[oidc]
-ENV FRONTEND_SVC_CONFIG_MODULE_CLASS amundsen_application.oidc_config.OidcConfig
-ENV APP_WRAPPER flaskoidc
-ENV APP_WRAPPER_CLASS FlaskOIDC
-ENV FLASK_OIDC_WHITELISTED_ENDPOINTS status,healthcheck,health
-ENV SQLALCHEMY_DATABASE_URI sqlite:///sessions.db
-
-# You will need to set these environment variables in order to use the oidc image
-# FLASK_OIDC_CONFIG_URL - url endpoint for your oidc provider config
-# FLASK_OIDC_PROVIDER_NAME - oidc provider name
-# FLASK_OIDC_CLIENT_ID - oidc client id
-# FLASK_OIDC_CLIENT_SECRET - oidc client secret
-
-FROM base as release
+ENTRYPOINT [ "python3" ]
+CMD [ "amundsen_application/wsgi.py" ]

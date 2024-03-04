@@ -10,7 +10,7 @@ RUN npm install
 
 COPY ./frontend/amundsen_application/static/ /app/amundsen_application/static/
 RUN npm rebuild node-sass
-RUN npm run dev-build
+RUN npm run build && rm -r node_modules
 
 COPY ./frontend /app
 

@@ -15,4 +15,4 @@ application = create_app()
 if __name__ == "__main__":
     PORT = os.getenv("FLASK_PORT", "5000")
 
-    application.run(debug=True, port=PORT)
+    application.run(port=PORT)
